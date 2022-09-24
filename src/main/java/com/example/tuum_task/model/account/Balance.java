@@ -1,4 +1,4 @@
-package com.example.tuum_task.model;
+package com.example.tuum_task.model.account;
 
 import java.math.BigDecimal;
 

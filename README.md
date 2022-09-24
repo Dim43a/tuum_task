@@ -74,7 +74,7 @@ Input:
 * Currency
 * Direction of transaction (IN, OUT)
 * Description
-* 
+
 Output:
 * Account ID
 * Transaction ID

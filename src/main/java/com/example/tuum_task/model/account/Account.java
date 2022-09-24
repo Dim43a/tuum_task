@@ -1,7 +1,6 @@
-package com.example.tuum_task.model;
+package com.example.tuum_task.model.account;
 
 import lombok.*;
-
 import javax.persistence.*;
 import java.math.BigDecimal;
 
@@ -12,10 +11,9 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class Account {
 
-
     @Column(name = "account_id")
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long accountId;
 
     @Column(name = "customer_id")
