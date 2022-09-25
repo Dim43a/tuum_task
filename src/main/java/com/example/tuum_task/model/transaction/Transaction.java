@@ -24,8 +24,9 @@ public class Transaction {
 
     private BigDecimal amount;
     private String currency;
-
     private String direction;
+
+    @Column(nullable = false)
     private String description;
 
     @Column(name = "left_balance")

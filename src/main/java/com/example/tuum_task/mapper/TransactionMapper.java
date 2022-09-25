@@ -10,14 +10,9 @@ import java.util.List;
 public interface TransactionMapper {
 
     @Insert("INSERT INTO transactions (" +
-            "account_id," +
-            "amount," +
-            "currency," +
-            "direction," +
-            "description," +
-            "left_balance," +
-            "date)" +
-            "VALUES (#{accountId}, #{amount}, #{currency}, #{direction}, #{description}, #{leftBalance}, #{date})")
+            "account_id, amount, currency, direction, description, left_balance, date)" +
+            "VALUES (" +
+            "#{accountId}, #{amount}, #{currency}, #{direction}, #{description}, #{leftBalance}, #{date})")
     void insetTransaction(Transaction transaction);
 
     @Select("SELECT * FROM transactions WHERE account_id = #{accountId}")

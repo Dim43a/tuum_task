@@ -9,5 +9,4 @@ public class TuumTaskApplication {
     public static void main(String[] args) {
         SpringApplication.run(TuumTaskApplication.class, args);
     }
-
 }

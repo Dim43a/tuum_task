@@ -22,16 +22,16 @@ public class Account {
     @Column(nullable = false)
     private String country;
 
-    /*It looks not accurate but in this case its the best solution.
+    /*It looks not accurate but in this case it's the best solution.
     Because if customers later will decide to use another currency
     we can easily provide this opportunity.
      */
     private Boolean eur = false;
-    private BigDecimal eurAmount = new BigDecimal(0);
+    private BigDecimal eurAmount = new BigDecimal("0.0");
     private Boolean sek = false;
-    private BigDecimal sekAmount = new BigDecimal(0);
+    private BigDecimal sekAmount = new BigDecimal("0.0");
     private Boolean gpb = false;
-    private BigDecimal gbpAmount = new BigDecimal(0);
+    private BigDecimal gbpAmount = new BigDecimal("0.0");
     private Boolean usd = false;
-    private BigDecimal usdAmount = new BigDecimal(0);
+    private BigDecimal usdAmount = new BigDecimal("0.0");
 }

@@ -30,168 +30,188 @@ public class AccountDefaultService implements AccountService {
     @Override
     public AccountResponse createAccount(AccountRequest request) {
         Account account = prepareAccount(request);
-        try{
+
+        try {
             accountMapper.insertAccount(account);
             return createAccountResponse(account);
         } catch (Exception e) {
-            throw new RuntimeException("Something went wrong");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is existing");
         }
     }
 
     @Override
     public AccountResponse getAccount(Long accountId) {
-        Account account = accountMapper.selectAccountByAccountId(accountId);
-
-        return createAccountResponse(account);
+        try {
+            Account account = accountMapper.selectAccountByAccountId(accountId);
+            return createAccountResponse(account);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account not found");
+        }
     }
 
     @Override
     public Transaction transaction(TransactionRequest request){
 
+        if(request.getDescription().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Description missing");
+        }
         Account account = accountMapper.selectAccountByAccountId(request.getAccountId());
 
-        switch (request.getCurrency()) {
-            case "EUR" -> {
-                if(account.getEur()) {
 
-                    if(Objects.equals(request.getDirection(), "IN")) {
-                        accountMapper.updateEur(request.getAccountId(), account.getEurAmount().add(request.getAmount()));
+        /*In case of option with multiple account currencies implementation with switch case
+        is probably the most optimal solution.
+        */
+            switch (request.getCurrency()) {
+                case "EUR" -> {
+                    if (account.getEur()) {
 
-                    } else if (Objects.equals(request.getDirection(), "OUT")) {
-                        if(account.getEurAmount().subtract(request.getAmount()).doubleValue() < 0) {
-                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not enough money on the account to complete transaction");
-                        } else {
+                        if (Objects.equals(request.getDirection(), "IN")) {
+                            incomeCheck(request, account);
+                            accountMapper.updateEur(request.getAccountId(), account.getEurAmount().add(request.getAmount()));
+                        } else if (Objects.equals(request.getDirection(), "OUT")) {
+                            outcomeCheck(request, account);
                             accountMapper.updateEur(request.getAccountId(), account.getEurAmount().subtract(request.getAmount()));
+                        } else {
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong direction, available IN and OUT");
                         }
 
+                        Transaction eurTransaction = prepareTransaction(account, request, Currencies.EUR, request.getDirection());
+                        transactionMapper.insetTransaction(eurTransaction);
+
+                        List<Transaction> list = transactionListSorting(request);
+                        return new Transaction(
+                                list.get(0).getTransactionId(),
+                                request.getAccountId(),
+                                request.getAmount(),
+                                request.getCurrency(),
+                                request.getDirection(),
+                                request.getDescription(),
+                                accountMapper.selectAccountByAccountId(request.getAccountId()).getEurAmount()
+                        );
                     } else {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong direction, available IN and OUT");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency or currency is not available for this account");
                     }
-
-                    Transaction eurTransaction = prepareTransaction(account, request, Currencies.EUR, request.getDirection());
-                    transactionMapper.insetTransaction(eurTransaction);
-
-                    List<Transaction> list = lala(request);
-                    return new Transaction(
-                            list.get(0).getTransactionId(),
-                            request.getAccountId(),
-                            request.getAmount(),
-                            request.getCurrency(),
-                            request.getDirection(),
-                            request.getDescription(),
-                            accountMapper.selectAccountByAccountId(request.getAccountId()).getEurAmount()
-                    );
-                } else {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected currency is not available for this account");
                 }
-            }
-            case "GPB" -> {
-                if(account.getGpb()) {
-                    if(Objects.equals(request.getDirection(), "IN")) {
-                        accountMapper.updateGbp(request.getAccountId(), account.getGbpAmount().add(request.getAmount()));
-                    } else if (Objects.equals(request.getDirection(), "OUT")) {
-                        accountMapper.updateGbp(request.getAccountId(), account.getGbpAmount().subtract(request.getAmount()));
+                case "GPB" -> {
+                    if (account.getGpb()) {
+                        if (Objects.equals(request.getDirection(), "IN")) {
+                            incomeCheck(request, account);
+                            accountMapper.updateGbp(request.getAccountId(), account.getGbpAmount().add(request.getAmount()));
+                        } else if (Objects.equals(request.getDirection(), "OUT")) {
+                            outcomeCheck(request, account);
+                            accountMapper.updateGbp(request.getAccountId(), account.getGbpAmount().subtract(request.getAmount()));
+                        }
+
+                        Transaction gbpTransaction = prepareTransaction(account, request, Currencies.GBP, request.getDirection());
+                        transactionMapper.insetTransaction(gbpTransaction);
+
+                        List<Transaction> list = transactionListSorting(request);
+                        return new Transaction(
+                                list.get(0).getTransactionId(),
+                                request.getAccountId(),
+                                request.getAmount(),
+                                request.getCurrency(),
+                                request.getDirection(),
+                                request.getDescription(),
+                                accountMapper.selectAccountByAccountId(request.getAccountId()).getGbpAmount()
+                        );
                     } else {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong direction, available IN and OUT");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency or currency is not available for this account");
+
                     }
-
-                    Transaction gbpTransaction = prepareTransaction(account, request, Currencies.GBP, request.getDirection());
-                    transactionMapper.insetTransaction(gbpTransaction);
-
-                    List<Transaction> list = lala(request);
-                    return new Transaction(
-                            list.get(0).getTransactionId(),
-                            request.getAccountId(),
-                            request.getAmount(),
-                            request.getCurrency(),
-                            request.getDirection(),
-                            request.getDescription(),
-                            accountMapper.selectAccountByAccountId(request.getAccountId()).getGbpAmount()
-                    );
-                } else {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected currency is not available for this account");
-
                 }
-            }
-            case "SEK" -> {
-                if(account.getSek()) {
-                    if(Objects.equals(request.getDirection(), "IN")) {
-                        accountMapper.updateSek(request.getAccountId(), account.getSekAmount().add(request.getAmount()));
-                    } else if (Objects.equals(request.getDirection(), "OUT")) {
-                        accountMapper.updateSek(request.getAccountId(), account.getSekAmount().subtract(request.getAmount()));
+                case "SEK" -> {
+                    if (account.getSek()) {
+                        if (Objects.equals(request.getDirection(), "IN")) {
+                            incomeCheck(request, account);
+                            accountMapper.updateSek(request.getAccountId(), account.getSekAmount().add(request.getAmount()));
+                        } else if (Objects.equals(request.getDirection(), "OUT")) {
+                            outcomeCheck(request, account);
+                            accountMapper.updateSek(request.getAccountId(), account.getSekAmount().subtract(request.getAmount()));
+                        } else {
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong direction, available IN and OUT");
+                        }
+
+                        Transaction sekTransaction = prepareTransaction(account, request, Currencies.SEK, request.getDirection());
+                        transactionMapper.insetTransaction(sekTransaction);
+
+                        List<Transaction> list = transactionListSorting(request);
+                        return new Transaction(
+                                list.get(0).getTransactionId(),
+                                request.getAccountId(),
+                                request.getAmount(),
+                                request.getCurrency(),
+                                request.getDirection(),
+                                request.getDescription(),
+                                accountMapper.selectAccountByAccountId(request.getAccountId()).getSekAmount()
+                        );
                     } else {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong direction, available IN and OUT");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency or currency is not available for this account");
                     }
-
-                    Transaction sekTransaction = prepareTransaction(account, request, Currencies.SEK, request.getDirection());
-                    transactionMapper.insetTransaction(sekTransaction);
-
-                    List<Transaction> list = lala(request);
-                    return new Transaction(
-                            list.get(0).getTransactionId(),
-                            request.getAccountId(),
-                            request.getAmount(),
-                            request.getCurrency(),
-                            request.getDirection(),
-                            request.getDescription(),
-                            accountMapper.selectAccountByAccountId(request.getAccountId()).getSekAmount()
-                    );
-                } else {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected currency is not available for this account");
                 }
-            }
-            case "USD" -> {
-                if(account.getUsd()) {
-                    if(Objects.equals(request.getDirection(), "IN")) {
-                        accountMapper.updateUsd(request.getAccountId(), account.getUsdAmount().add(request.getAmount()));
-                    } else if (Objects.equals(request.getDirection(), "OUT")) {
-                        accountMapper.updateUsd(request.getAccountId(), account.getUsdAmount().subtract(request.getAmount()));
+                case "USD" -> {
+                    if (account.getUsd()) {
+                        if (Objects.equals(request.getDirection(), "IN")) {
+                            incomeCheck(request, account);
+                            accountMapper.updateUsd(request.getAccountId(), account.getUsdAmount().add(request.getAmount()));
+                        } else if (Objects.equals(request.getDirection(), "OUT")) {
+                            outcomeCheck(request, account);
+                            accountMapper.updateUsd(request.getAccountId(), account.getUsdAmount().subtract(request.getAmount()));
+                        } else {
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid direction, available IN and OUT");
+                        }
+
+                        Transaction usdTransaction = prepareTransaction(account, request, Currencies.USD, request.getDirection());
+                        transactionMapper.insetTransaction(usdTransaction);
+
+                        List<Transaction> list = transactionListSorting(request);
+                        return new Transaction(
+                                list.get(0).getTransactionId(),
+                                request.getAccountId(),
+                                request.getAmount(),
+                                request.getCurrency(),
+                                request.getDirection(),
+                                request.getDescription(),
+                                accountMapper.selectAccountByAccountId(request.getAccountId()).getUsdAmount()
+                        );
                     } else {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong direction, available IN and OUT");
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency or currency is not available for this account");
                     }
-
-                    Transaction usdTransaction = prepareTransaction(account, request, Currencies.USD, request.getDirection());
-                    transactionMapper.insetTransaction(usdTransaction);
-
-                    List<Transaction> list = lala(request);
-                    return new Transaction(
-                            list.get(0).getTransactionId(),
-                            request.getAccountId(),
-                            request.getAmount(),
-                            request.getCurrency(),
-                            request.getDirection(),
-                            request.getDescription(),
-                            accountMapper.selectAccountByAccountId(request.getAccountId()).getUsdAmount()
-                    );
-                } else {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected currency is not available for this account");
                 }
+                default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong currency inserted");
             }
-        }
-
-
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong currency inserted");
+//        } catch (Exception e) {
+//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is missing" + e.getMessage());
+//        }
     }
 
     @Override
     public List<Transaction> getTransactionList(Long accountId) {
 
-        return transactionMapper.getTransactionList(accountId);
+        try {
+            return transactionMapper.getTransactionList(accountId);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid account", e);
+        }
     }
 
     private Account prepareAccount(AccountRequest request) {
         Account account = new Account();
         account.setCustomerId(request.getCustomerId());
         account.setCountry(request.getCountry());
-        account.setEur(request.getEur());
-        account.setSek(request.getSek());
-        account.setGpb(request.getGbp());
-        account.setUsd(request.getUsd());
+        account.setEur(replaceNullWithFalse(request.getCurrencies().get("eur")));
+        account.setSek(replaceNullWithFalse(request.getCurrencies().get("sek")));
+        account.setGpb(replaceNullWithFalse(request.getCurrencies().get("gbp")));
+        account.setUsd(replaceNullWithFalse(request.getCurrencies().get("usd")));
 
         return account;
     }
 
-    private List<Transaction> lala (TransactionRequest request) {
+    private Boolean replaceNullWithFalse(Boolean currency) {
+        return currency != null;
+    }
+
+    private List<Transaction> transactionListSorting(TransactionRequest request) {
         List<Transaction> list = transactionMapper.getTransactionList(request.getAccountId());
         //creating comparator for proper date sorting
         Comparator<Transaction> comparator = (tran1, tran2) -> tran2.getDate().compareTo(tran1.getDate());
@@ -201,27 +221,30 @@ public class AccountDefaultService implements AccountService {
     }
 
     private AccountResponse createAccountResponse(Account account) {
-        ArrayList<Balance> list = new ArrayList<>();
-        Balance eurBalance = check(account.getEur(), Currencies.EUR);
-        Balance sekBalance = check(account.getSek(), Currencies.SEK);
-        Balance gbpBalance = check(account.getGpb(), Currencies.GBP);
-        Balance usdBalance = check(account.getUsd(), Currencies.USD);
+        ArrayList<Balance> balanceList = new ArrayList<>();
+        Balance eurBalance = createBalance(account.getEur(), Currencies.EUR);
+        Balance sekBalance = createBalance(account.getSek(), Currencies.SEK);
+        Balance gbpBalance = createBalance(account.getGpb(), Currencies.GBP);
+        Balance usdBalance = createBalance(account.getUsd(), Currencies.USD);
 
-        list.add(eurBalance);
-        list.add(sekBalance);
-        list.add(gbpBalance);
-        list.add(usdBalance);
+        balanceList.add(eurBalance);
+        balanceList.add(sekBalance);
+        balanceList.add(gbpBalance);
+        balanceList.add(usdBalance);
 
         //Remove null elements from arrayList
-        list.removeAll(Collections.singletonList(null));
+        balanceList.removeAll(Collections.singletonList(null));
 
+        if(balanceList.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid currency");
+        }
         Account accountId = accountMapper.selectAccountByCustomerId(account.getCustomerId());
 
         return new AccountResponse(
                 accountId.getAccountId(),
                 account.getCustomerId(),
                 account.getCountry(),
-                list
+                balanceList
         );
     }
 
@@ -269,30 +292,41 @@ public class AccountDefaultService implements AccountService {
         return transaction;
     }
 
+    private void incomeCheck(TransactionRequest request, Account account) {
+        if(request.getAmount().doubleValue() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid amount");
+        }
+    }
 
-    private Balance check(Boolean isCurrencyAllowedForAccount, Currencies currencies) {
+    private void outcomeCheck(TransactionRequest request, Account account) {
+        if (account.getEurAmount().subtract(request.getAmount()).doubleValue() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not enough money on the account to complete transaction");
+        }
+    }
+
+    private Balance createBalance(Boolean isCurrencyAllowedForAccount, Currencies currencies) {
         switch (currencies) {
             case EUR:
                 if(isCurrencyAllowedForAccount) {
-                    return new Balance(Currencies.EUR, new BigDecimal(0));
+                    return new Balance(Currencies.EUR, new BigDecimal("0.0"));
                 } else {
                     break;
                 }
             case SEK:
                 if(isCurrencyAllowedForAccount) {
-                    return new Balance(Currencies.SEK, new BigDecimal(0));
+                    return new Balance(Currencies.SEK, new BigDecimal("0.0"));
                 } else {
                     break;
                 }
             case GBP:
                 if(isCurrencyAllowedForAccount) {
-                    return new Balance(Currencies.GBP, new BigDecimal(0));
+                    return new Balance(Currencies.GBP, new BigDecimal("0.0"));
                 } else {
                     break;
                 }
             case USD:
                 if(isCurrencyAllowedForAccount) {
-                    return new Balance(Currencies.USD, new BigDecimal(0));
+                    return new Balance(Currencies.USD, new BigDecimal("0.0"));
                 } else {
                     break;
                 }
