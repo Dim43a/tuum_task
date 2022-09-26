@@ -57,3 +57,11 @@ Body:
 ### Get transaction
 
 URI: ``tuum/transactionList/{accountId}``
+
+### Docker
+
+To run project using docker you need to run:
+* Postgresql
+* Rabbitmq
+* Run command ``./gradlew bootJar``
+* Then docker-compose up

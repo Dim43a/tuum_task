@@ -11,10 +11,15 @@ services:
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_USER=dima
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=123
       - POSTGRES_DB=tuum
     restart: unless-stopped
+  rabbitmq:
+      image: rabbitmq:management
+      ports:
+        - "5672:5672"
+        - "15672:15672"
   # APP*****************************************
   springbootapp:
     image: springbootapp:latest

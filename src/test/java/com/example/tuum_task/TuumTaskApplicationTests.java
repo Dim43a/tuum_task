@@ -4,19 +4,16 @@ import com.example.tuum_task.rest.request.AccountRequest;
 import com.example.tuum_task.rest.request.TransactionRequest;
 import com.example.tuum_task.rest.response.AccountResponse;
 import com.example.tuum_task.service.AccountService;
-import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Random;
-import java.util.UUID;
 
 @SpringBootTest
 class TuumTaskApplicationTests {
@@ -96,6 +93,4 @@ class TuumTaskApplicationTests {
 
         return transactionRequest;
     }
-
-
 }
